@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import {Test, console2} from "forge-std/Test.sol";
@@ -8,6 +8,9 @@ import "../lib/account-abstraction/contracts/interfaces/UserOperation.sol";
 import { AccountFactory } from "src/AccountFactory.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
+/* solhint-disable private-vars-leading-underscore */
+/* solhint-disable state-visibility */
+
 contract AAWalletTest is Test {
     address user;
     uint256 userPrivateKey;
@@ -15,10 +18,8 @@ contract AAWalletTest is Test {
     AccountFactory public accountFactory;
     AAWallet public aaWallet;
 
-
-    //solhint-disable-next-line
+    //solhint-disable-next-line 
     address constant entryPointAddress = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
-    //solhint-disable-next-line
     EntryPoint entryPoint = EntryPoint(payable(entryPointAddress));
 
     /*
@@ -54,6 +55,7 @@ contract AAWalletTest is Test {
         vm.stopPrank();
     }
 
+    //solhint-disable-next-line
     function test_WalletCreation() public {
         vm.startPrank(user);
         UserOperation memory userOp;
@@ -82,6 +84,7 @@ contract AAWalletTest is Test {
         //SIGN USER OPERATION WITH USER PRIAVTE KEY
         {
             bytes32 userOpHashReal = entryPoint.getUserOpHash(userOp);
+            //solhint-disable-next-line
             console2.logBytes32(userOpHashReal);
 
             // bytes memory userOpPacked = abi.encodePacked(
