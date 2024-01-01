@@ -10,3 +10,6 @@
 [submodule "lib/reference"]
 	path = lib/reference
 	url = https://github.com/erc6551/reference
+[submodule "lib/chainlink"]
+	path = lib/chainlink
+	url = https://github.com/smartcontractkit/chainlink

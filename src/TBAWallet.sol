@@ -12,6 +12,7 @@ import "../lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 import "../lib/account-abstraction/contracts/interfaces/UserOperation.sol";
+import { ERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 /*
     struct UserOperation {
@@ -180,5 +181,13 @@ contract TBAWallet is
         if (chainId != block.chainid) return address(0);
 
         return IERC721(tokenContract).ownerOf(tokenId);
+    }
+
+    // ---------------------------------------------------------------------------
+    //                                OWNER FUNCTIONS
+    // --------------------------------------------------------------------------- 
+    function approveToken(address tokenAddress, address spender, uint256 amount) external {
+        require(msg.sender == owner(), "account: not Owner");
+        ERC20(tokenAddress).approve(spender, amount);
     }
 }
