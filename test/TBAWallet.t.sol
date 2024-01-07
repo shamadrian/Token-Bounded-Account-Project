@@ -252,9 +252,100 @@ contract TBAWalletTest is Test {
             entryPoint.handleOps(input, payable(address(paymaster)));
         }
 
+        /*
         console2.log("Account ETH Balance = ", address(tbaWallet).balance);
         console2.log("Account USDC Balance = ", USDC.balanceOf(account));
         console2.log("Paymaster ETH Balance = ", address(paymaster).balance);
         console2.log("Paymaster USDC Balance = ", USDC.balanceOf(address(paymaster)));
-    }   
+        console2.log("User1 ETH Balance = ", address(user1).balance);
+        console2.log("User1 USDC Balance = ", USDC.balanceOf(user1));
+        console2.log("User2 ETH Balance = ", address(user2).balance);
+        console2.log("User2 USDC Balance = ", USDC.balanceOf(user2));
+        */
+    }
+
+    function test_ExecuteBatch() public {
+        //CREATE ACCOUNT
+        address account = registry.account(address(tbaWalletBase), 0, block.chainid, address(nft), 1);
+        vm.startPrank(user1);
+        nft.mint(user1);
+        registry.createAccount(address(tbaWalletBase), 0, block.chainid, address(nft), 1);
+        TBAWallet tbaWallet = TBAWallet(payable(account));
+        
+        //USER1 SENDS ETHER AND USDC TO ACCOUNT
+        {
+            (bool success, ) = account.call{value: 2 ether}("");
+            require(success, "failed to send ether");
+            USDC.transfer(account, 1000 * 10 ** 6);
+            tbaWallet.approveToken(USDCAddress, address(paymaster), 1000 * 10 ** 6);            
+        }
+
+        //INIT USER OPERATION
+        UserOperation memory userOp;
+        bytes memory signature;
+        {
+            address[] memory targets = new address[](2);
+            targets[0] = user2;
+            targets[1] = USDCAddress;
+            bytes[] memory data = new bytes[](2);
+            data[0] = bytes("");
+            data[1] = abi.encodeWithSignature("transfer(address,uint256)", user2, 100 * 10 ** 6);
+            uint256[] memory values = new uint256[](2);
+            values[0] = 1 ether;
+            values[1] = 0;
+
+            bytes memory functionBytes = 
+            abi.encodeWithSignature(
+                "executeBatch(address[],uint256[],bytes[])", 
+                targets,
+                values,
+                data
+            );
+
+            bytes memory paymasterAndData = abi.encodePacked(address(paymaster));
+
+            userOp = UserOperation({
+                sender: account,
+                nonce: 0,
+                initCode: bytes(""),
+                callData: functionBytes,
+                callGasLimit: 260611,
+                verificationGasLimit: 362451,
+                preVerificationGas: 53576,
+                maxFeePerGas: 29964445250,
+                maxPriorityFeePerGas: 100000000, 
+                paymasterAndData: paymasterAndData,
+                signature: bytes("")
+            });
+        }
+
+        //SIGN USER OPERATION WITH USER PRIAVTE KEY
+        {
+            bytes32 userOpHashReal = entryPoint.getUserOpHash(userOp);
+            bytes32 message = keccak256(abi.encodePacked(
+                "\x19Ethereum Signed Message:\n",
+                Strings.toString(userOpHashReal.length),
+                userOpHashReal
+            ));
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(user1PrivateKey, message);
+            signature = abi.encodePacked(r, s, v);
+            userOp.signature = signature;
+        }
+
+        //CALL HANDLE OPS
+        {
+            UserOperation[] memory input = new UserOperation[](1);
+            input[0] = userOp;
+            entryPoint.handleOps(input, payable(address(paymaster)));
+        }
+
+        console2.log("Account ETH Balance = ", address(tbaWallet).balance);
+        console2.log("Account USDC Balance = ", USDC.balanceOf(account));
+        console2.log("Paymaster ETH Balance = ", address(paymaster).balance);
+        console2.log("Paymaster USDC Balance = ", USDC.balanceOf(address(paymaster)));
+        console2.log("User1 ETH Balance = ", address(user1).balance);
+        console2.log("User1 USDC Balance = ", USDC.balanceOf(user1));
+        console2.log("User2 ETH Balance = ", address(user2).balance);
+        console2.log("User2 USDC Balance = ", USDC.balanceOf(user2));
+    }
 }

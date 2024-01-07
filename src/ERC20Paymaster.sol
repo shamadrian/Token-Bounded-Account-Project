@@ -66,4 +66,13 @@ contract ERC20Paymaster is BasePaymaster {
     }
 
     receive() external payable {}
+
+    function withdrawToOwnerUSDC(address _to) external onlyOwner{
+        USDC.safeTransfer(_to, USDC.balanceOf(address(this)));
+    }
+
+    function withdrawToOwnerETH(address _to) external onlyOwner{
+        (bool success, ) = payable(_to).call{value: address(this).balance}("");
+        require(success, "failed to send ether");
+    }
 }

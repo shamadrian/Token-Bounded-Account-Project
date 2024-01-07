@@ -14,6 +14,9 @@ import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import "../lib/account-abstraction/contracts/interfaces/UserOperation.sol";
 import { ERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
+import { GuardianCompatible } from "./GuardianCompatible.sol";
+import { ERC721 } from "../lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+
 /*
     struct UserOperation {
         address sender;
@@ -30,10 +33,10 @@ import { ERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20
     }
 */
 
-
 //---------------------------------------------------------------------------
 //                            IERC6551 INTERFACES
 //---------------------------------------------------------------------------
+
 interface IERC6551Account {
     receive() external payable;
 
@@ -66,7 +69,8 @@ contract TBAWallet is
     IERC1271, 
     IERC6551Account, 
     IERC6551Executable,
-    ERC4337Compatible {
+    ERC4337Compatible,
+    GuardianCompatible {
     using ECDSA for bytes32;
 
     //STORAGE
@@ -78,6 +82,7 @@ contract TBAWallet is
     //---------------------------------------------------------------------------
     //                      ERC4337Compatible FUNCTIONS
     //---------------------------------------------------------------------------
+
     constructor (IEntryPoint anEntryPoint) {
         _entryPoint = anEntryPoint;
     }
@@ -127,11 +132,12 @@ contract TBAWallet is
     /**
      * execute a sequence of transactions
      */
-    function executeBatch(address[] calldata dest, bytes[] calldata func) external {
+    function executeBatch(address[] calldata dest, uint256[] calldata value, bytes[] calldata func) external {
         _requireFromEntryPointOrOwner();
-        require(dest.length == func.length, "wrong array lengths");
+        require(dest.length == func.length, "wrong array lengths df");
+        require(dest.length == value.length, "wrong array lengths dv");
         for (uint256 i = 0; i < dest.length; i++) {
-            _call(dest[i], 0, func[i]);
+            _call(dest[i], value[i], func[i]);
         }
     }
 
@@ -184,10 +190,38 @@ contract TBAWallet is
     }
 
     // ---------------------------------------------------------------------------
+    //                         GUARDIAN COMPATIBLE FUNCTIONS
+    // ---------------------------------------------------------------------------
+
+    function checkCallerIsOwner() internal override virtual {
+        _isValidSigner(msg.sender);
+    }
+
+    function updateOwnerRecorded() internal override virtual {
+        ownerRecorded = owner();
+    }
+
+    function checkIsOperator() internal override virtual {
+        (uint256 chainId, address tokenContract, ) = token();
+        require(chainId == block.chainid, "chainId mismatch");
+        require(IERC721(tokenContract).isApprovedForAll(owner(), address(this)), "TBA Wallet is not operator");
+    }
+
+    function transferOwnership(address _newOwner) internal override virtual {
+        (uint256 chainId, address tokenContract, uint256 tokenId) = token();
+        require(chainId == block.chainid, "chainId mismatch");
+        IERC721(tokenContract).transferFrom(owner(), _newOwner, tokenId);
+    }
+
+    function checkOwnerConsistency() internal override virtual {
+        require(ownerRecorded == owner(), "owner mismatch");
+    }
+
+    // ---------------------------------------------------------------------------
     //                                OWNER FUNCTIONS
     // --------------------------------------------------------------------------- 
     function approveToken(address tokenAddress, address spender, uint256 amount) external {
-        require(msg.sender == owner(), "account: not Owner");
+        require(_isValidSigner(msg.sender), "Only Owner can execute approveToken");
         ERC20(tokenAddress).approve(spender, amount);
     }
 }
