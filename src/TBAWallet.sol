@@ -194,7 +194,7 @@ contract TBAWallet is
     // ---------------------------------------------------------------------------
 
     function checkCallerIsOwner() internal override virtual {
-        _isValidSigner(msg.sender);
+        require(_isValidSigner(msg.sender), "Caller is not Owner");
     }
 
     function updateOwnerRecorded() internal override virtual {

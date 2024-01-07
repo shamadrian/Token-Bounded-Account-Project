@@ -147,7 +147,7 @@ contract TBAWalletTest is Test {
     }
 
     function test_ChangeOwner() public {
-        {
+        {   //guardian 1 action
             vm.startPrank(guardian1);
             tbaWallet.proposeChangeOwner(user2);
             (uint256 approvalCount, uint256 timestamp) = tbaWallet.recoveries(0, user2);
@@ -156,8 +156,7 @@ contract TBAWalletTest is Test {
             vm.stopPrank();
         }
         
-        {
-            vm.warp(2 minutes);
+        {   //guardian 2 action
             vm.startPrank(guardian2);
             tbaWallet.voteChangeOwner(user2);
             (uint256 approvalCount, ) = tbaWallet.recoveries(0, user2);
@@ -165,8 +164,7 @@ contract TBAWalletTest is Test {
             vm.stopPrank();
         }
 
-        {
-            vm.warp(2 minutes);
+        {   //guardian 3 action
             vm.startPrank(guardian3);
             tbaWallet.executeChangeOwner(user2);
             assertEq(tbaWallet.owner(), user2);

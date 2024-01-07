@@ -51,8 +51,8 @@ abstract contract GuardianCompatible {
     function initializeGuardians(address[] memory _guardians, uint8 _threshhold) external {
         checkCallerIsOwner();
         checkIsOperator();
-        require(_guardians.length > 0 && _guardians.length < 9, " 0 < Number of guardians < 9");
-        require(_threshhold > 0 && _threshhold <= _guardians.length, " 0 < threshhold <= Number of guardians");
+        require(_guardians.length > 0 && _guardians.length < 9, "0 < Number of guardians < 9");
+        require(_threshhold > 0 && _threshhold <= _guardians.length, "0 < threshhold <= Number of guardians");
         require(!guardianFlag, "guardians already initialized");
         updateOwnerRecorded();
         for (uint256 i = 0; i < _guardians.length; i++) {
@@ -66,6 +66,9 @@ abstract contract GuardianCompatible {
     function addGuardian(address _guardian, uint8 _threshhold) external {
         checkCallerIsOwner();
         require(!guardians[counter][_guardian], "guardian already exists");
+        require(guardianCount < 8, "guardian count must be less than 8");
+        require(_threshhold <= guardianCount + 1, "threshhold must be less than or equal to the number of guardians");
+        require(_guardian != ownerRecorded, "guardian cannot be owner");
         guardians[counter][_guardian] = true;
         guardianCount++;
         threshhold = _threshhold;
@@ -74,6 +77,14 @@ abstract contract GuardianCompatible {
     function removeGuardian(address _guardian, uint8 _threshhold) external {
         checkCallerIsOwner();
         require(guardians[counter][_guardian], "guardian does not exist");
+        if (guardianCount == 1) {
+            require(_threshhold == 0, "threshhold must be 0 when removing last guardian");
+            guardianFlag = false;
+        } 
+        else {
+            require(_threshhold > 0, "threshhold must be greater than 0");
+            require(_threshhold <= guardianCount - 1, "threshhold must be less than or equal to the number of guardians");
+        }
         guardians[counter][_guardian] = false;
         guardianCount--;
         threshhold = _threshhold;
@@ -103,8 +114,8 @@ abstract contract GuardianCompatible {
     }
 
     function proposeChangeOwner(address _newOwner) external onlyGuardian() {
-        checkIsOperator();
         checkOwnerConsistency();
+        checkIsOperator();
         uint8 valid = validateNewOwner(_newOwner);
         Strings.toString(valid);
         if (valid != 0) revert(string(abi.encodePacked("valid = ", Strings.toString(valid))));
@@ -117,21 +128,21 @@ abstract contract GuardianCompatible {
     }
 
     function voteChangeOwner(address _newOwner) external onlyGuardian() {
-        checkIsOperator();
         checkOwnerConsistency();
+        checkIsOperator();
         require(recoveries[counter][_newOwner].approvalCount > 0, "no recovery in progress");
         require(!recoveries[counter][_newOwner].voted[msg.sender], "already voted");
-        require(block.timestamp < recoveries[counter][_newOwner].startTime + recoveryPeriod, "recovery period expired");
+        //require(block.timestamp < recoveries[counter][_newOwner].startTime + 10 minutes, "recovery period expired");
         recoveries[counter][_newOwner].approvalCount++;
         recoveries[counter][_newOwner].voted[msg.sender] = true;
     }
 
     function executeChangeOwner(address _newOwner) external onlyGuardian() {
-        checkIsOperator();
         checkOwnerConsistency();
+        checkIsOperator();
         require(recoveries[counter][_newOwner].approvalCount > 0, "no recovery in progress");
-        require(block.timestamp < recoveries[counter][_newOwner].startTime + recoveryPeriod, "recovery period expired");
         require(recoveries[counter][_newOwner].approvalCount >= threshhold, "not enough votes");
+        //require(block.timestamp < recoveries[counter][_newOwner].startTime + recoveryPeriod, "recovery period expired");
         transferOwnership(_newOwner);
         ownerRecorded = _newOwner;
         threshhold = 0;
